@@ -10,14 +10,21 @@ import {
 } from 'react'
 
 import {
+  addTaskDependency,
+  createTask,
   getProject,
   getProjectTasks,
-  createTask,
+  getTask,
+  removeTaskDependency,
   updateTask,
 } from '@/lib/api'
 
 import type { ProjectDetail } from '@/types/project'
-import type { Task, TaskStatus } from '@/types/task'
+import type {
+  Task,
+  TaskDetail,
+  TaskStatus,
+} from '@/types/task'
 
 export default function ProjectDetailPage() {
   const params = useParams<{ id: string }>()
@@ -367,6 +374,21 @@ function TaskItem({
   const [taskError, setTaskError] =
     useState<string | null>(null)
 
+    const [taskDetail, setTaskDetail] =
+    useState<TaskDetail | null>(null)
+
+    const [showDependencies, setShowDependencies] =
+    useState(false)
+
+    const [selectedDependencyId, setSelectedDependencyId] =
+    useState('')
+
+    const [dependencyLoading, setDependencyLoading] =
+    useState(false)
+
+    const [dependencyError, setDependencyError] =
+    useState<string | null>(null)
+
   async function handleSave() {
     try {
       setSaving(true)
@@ -402,6 +424,92 @@ function TaskItem({
     setTaskError(null)
     setEditing(false)
   }
+
+  async function loadTaskDetail() {
+  try {
+    setDependencyLoading(true)
+    setDependencyError(null)
+
+    const detail = await getTask(task.id)
+
+    setTaskDetail(detail)
+  } catch (error) {
+    setDependencyError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to load dependencies'
+    )
+  } finally {
+    setDependencyLoading(false)
+  }
+    }
+
+    async function handleToggleDependencies() {
+  const nextValue = !showDependencies
+
+  setShowDependencies(nextValue)
+
+  if (
+    nextValue &&
+    !taskDetail
+  ) {
+    await loadTaskDetail()
+  }
+    }
+
+    async function handleAddDependency() {
+  if (!selectedDependencyId) {
+    return
+  }
+
+  try {
+    setDependencyLoading(true)
+    setDependencyError(null)
+
+    await addTaskDependency(
+      task.id,
+      selectedDependencyId
+    )
+
+    setSelectedDependencyId('')
+
+    await loadTaskDetail()
+    await onUpdated()
+  } catch (error) {
+    setDependencyError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to add dependency'
+    )
+  } finally {
+    setDependencyLoading(false)
+  }
+}
+
+async function handleRemoveDependency(
+  dependsOnTaskId: string
+) {
+  try {
+    setDependencyLoading(true)
+    setDependencyError(null)
+
+    await removeTaskDependency(
+      task.id,
+      dependsOnTaskId
+    )
+
+    await loadTaskDetail()
+    await onUpdated()
+  } catch (error) {
+    setDependencyError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to remove dependency'
+    )
+  } finally {
+    setDependencyLoading(false)
+  }
+}
 
   return (
     <div>
@@ -551,6 +659,13 @@ function TaskItem({
               </span>
 
               <button
+                onClick={handleToggleDependencies}
+                className="rounded-md border px-3 py-1.5 text-sm"
+            >
+                Dependencies
+            </button>
+
+              <button
                 onClick={() => setEditing(true)}
                 className="rounded-md border px-3 py-1.5 text-sm"
               >
@@ -558,6 +673,123 @@ function TaskItem({
               </button>
             </div>
           </div>
+        )}
+
+        {showDependencies && (
+        <div className="mt-4 border-t pt-4">
+            <div className="mb-3 text-sm font-medium">
+            Dependencies
+            </div>
+
+            {dependencyLoading && !taskDetail ? (
+            <div className="text-sm text-gray-500">
+                Loading dependencies...
+            </div>
+            ) : (
+            <>
+                {taskDetail?.dependencies.length ? (
+                <div className="mb-4 space-y-2">
+                    {taskDetail.dependencies.map(
+                    (dependency) => {
+                        const dependencyTask =
+                        allTasks.find(
+                            (option) =>
+                            option.id ===
+                            dependency.dependsOnTaskId
+                        )
+
+                        return (
+                        <div
+                            key={
+                            dependency.dependsOnTaskId
+                            }
+                            className="flex items-center justify-between rounded-md bg-gray-50 px-3 py-2"
+                        >
+                            <span className="text-sm">
+                            {dependencyTask?.name ??
+                                dependency.dependsOnTaskId}
+                            </span>
+
+                            <button
+                            type="button"
+                            onClick={() =>
+                                handleRemoveDependency(
+                                dependency.dependsOnTaskId
+                                )
+                            }
+                            disabled={
+                                dependencyLoading
+                            }
+                            className="text-sm text-red-600 disabled:opacity-50"
+                            >
+                            Remove
+                            </button>
+                        </div>
+                        )
+                    }
+                    )}
+                </div>
+                ) : (
+                <div className="mb-4 text-sm text-gray-500">
+                    No dependencies.
+                </div>
+                )}
+
+                <div className="flex gap-2">
+                <select
+                    value={selectedDependencyId}
+                    onChange={(event) =>
+                    setSelectedDependencyId(
+                        event.target.value
+                    )
+                    }
+                    className="flex-1 rounded-md border px-3 py-2 text-sm"
+                >
+                    <option value="">
+                    Select dependency
+                    </option>
+
+                    {allTasks
+                    .filter(
+                        (option) =>
+                        option.id !== task.id &&
+                        !taskDetail?.dependencies.some(
+                            (dependency) =>
+                            dependency.dependsOnTaskId ===
+                            option.id
+                        )
+                    )
+                    .map((option) => (
+                        <option
+                        key={option.id}
+                        value={option.id}
+                        >
+                        {option.label}
+                        </option>
+                    ))}
+                </select>
+
+                <button
+                    type="button"
+                    onClick={handleAddDependency}
+                    disabled={
+                    !selectedDependencyId ||
+                    dependencyLoading
+                    }
+                    className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+                >
+                    Add
+                </button>
+                </div>
+
+                {dependencyError && (
+                <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    {dependencyError}
+                </div>
+                )}
+            </>
+            )}
+        </div>
         )}
       </div>
 
@@ -577,6 +809,7 @@ function TaskItem({
 type TaskOption = {
   id: string
   label: string
+  name: string
 }
 
 function flattenTasks(
@@ -586,8 +819,12 @@ function flattenTasks(
   return tasks.flatMap((task) => [
     {
       id: task.id,
+      name: task.name,
       label: `${'— '.repeat(level)}${task.name}`,
     },
-    ...flattenTasks(task.subtasks, level + 1),
+    ...flattenTasks(
+      task.subtasks,
+      level + 1
+    ),
   ])
 }

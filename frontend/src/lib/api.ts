@@ -4,7 +4,7 @@ import type {
   ProjectDetail,
 } from '@/types/project'
 
-import type { Task, CreateTaskInput, UpdateTaskInput } from '@/types/task'
+import type { Task, CreateTaskInput, UpdateTaskInput, TaskDetail } from '@/types/task'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -17,6 +17,7 @@ type ApiResponse<T> = {
   data: T
 }
 
+// Project APIs
 export async function getProjects(): Promise<Project[]> {
   const response = await fetch(`${API_URL}/projects`, {
     cache: 'no-store',
@@ -98,6 +99,57 @@ export async function createProject(
   return result.data
 }
 
+// Task APIs
+export async function getTask(
+  taskId: string
+): Promise<TaskDetail> {
+  const response = await fetch(
+    `${API_URL}/tasks/${taskId}`,
+    {
+      cache: 'no-store',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to fetch task'
+    )
+  }
+
+  return result.data
+}
+
+export async function addTaskDependency(
+  taskId: string,
+  dependsOnTaskId: string
+) {
+  const response = await fetch(
+    `${API_URL}/tasks/${taskId}/dependencies`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dependsOnTaskId,
+      }),
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        'Failed to add task dependency'
+    )
+  }
+
+  return result.data
+}
+
 export async function createTask(
   projectId: string,
   input: CreateTaskInput
@@ -160,6 +212,29 @@ export async function updateTask(
 
     throw new Error(
       result.message ?? 'Failed to update task'
+    )
+  }
+
+  return result.data
+}
+
+export async function removeTaskDependency(
+  taskId: string,
+  dependsOnTaskId: string
+) {
+  const response = await fetch(
+    `${API_URL}/tasks/${taskId}/dependencies/${dependsOnTaskId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        'Failed to remove task dependency'
     )
   }
 

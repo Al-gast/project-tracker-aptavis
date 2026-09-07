@@ -28,3 +28,13 @@ export type UpdateTaskInput = {
   status?: TaskStatus
   parentTaskId?: string | null
 }
+
+export type TaskDependency = {
+  taskId: string
+  dependsOnTaskId: string
+  createdAt: string
+}
+
+export type TaskDetail = Task & {
+  dependencies: TaskDependency[]
+}
