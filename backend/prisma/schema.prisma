@@ -1,0 +1,83 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TaskStatus {
+  DRAFT
+  IN_PROGRESS
+  DONE
+}
+
+model Project {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(150)
+  startDate DateTime @map("start_date") @db.Date
+  endDate   DateTime @map("end_date") @db.Date
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tasks Task[]
+
+  dependencies ProjectDependency[] @relation("ProjectDependencies")
+  dependents   ProjectDependency[] @relation("ProjectDependents")
+
+  @@map("projects")
+}
+
+model Task {
+  id           String     @id @default(uuid()) @db.Uuid
+  projectId    String     @map("project_id") @db.Uuid
+  parentTaskId String?    @map("parent_task_id") @db.Uuid
+  name         String     @db.VarChar(150)
+  status       TaskStatus @default(DRAFT)
+  weight       Int        @default(1)
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  parent       Task?            @relation("TaskHierarchy", fields: [parentTaskId], references: [id], onDelete: SetNull)
+  subtasks     Task[]           @relation("TaskHierarchy")
+  dependencies TaskDependency[] @relation("TaskDependencies")
+  dependents   TaskDependency[] @relation("TaskDependents")
+
+  @@index([projectId])
+  @@index([parentTaskId])
+  @@map("tasks")
+}
+
+model TaskDependency {
+  taskId          String   @map("task_id") @db.Uuid
+  dependsOnTaskId String   @map("depends_on_task_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  task          Task @relation("TaskDependencies", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOnTask Task @relation("TaskDependents", fields: [dependsOnTaskId], references: [id], onDelete: Cascade)
+
+  @@id([taskId, dependsOnTaskId])
+  @@index([dependsOnTaskId])
+  @@map("task_dependencies")
+}
+
+model ProjectDependency {
+  projectId          String   @map("project_id") @db.Uuid
+  dependsOnProjectId String   @map("depends_on_project_id") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  project          Project @relation("ProjectDependencies", fields: [projectId], references: [id], onDelete: Cascade)
+  dependsOnProject Project @relation("ProjectDependents", fields: [dependsOnProjectId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, dependsOnProjectId])
+  @@index([dependsOnProjectId])
+  @@map("project_dependencies")
+}
