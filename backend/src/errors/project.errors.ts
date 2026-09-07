@@ -25,3 +25,24 @@ export class ProjectNotFoundError extends Error {
     this.name = 'ProjectNotFoundError'
   }
 }
+
+export class InvalidProjectDependencyError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'InvalidProjectDependencyError'
+  }
+}
+
+export class CircularProjectDependencyError extends Error {
+  constructor() {
+    super('Circular project dependency is not allowed')
+    this.name = 'CircularProjectDependencyError'
+  }
+}
+
+export class ProjectDependencyNotFoundError extends Error {
+  constructor() {
+    super('Project dependency not found')
+    this.name = 'ProjectDependencyNotFoundError'
+  }
+}

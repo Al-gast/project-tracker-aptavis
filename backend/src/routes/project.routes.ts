@@ -9,6 +9,11 @@ import {
 } from '../controllers/project.controller.js'
 
 import {
+  addProjectDependencyController,
+  removeProjectDependencyController,
+} from '../controllers/project-dependency.controller.js'
+
+import {
   createTaskController,
   getProjectTasksController,
 } from '../controllers/task.controller.js'
@@ -24,5 +29,14 @@ router.post('/:projectId/tasks', createTaskController)
 router.post('/', createProjectController)
 router.put('/:id', updateProjectController)
 router.delete('/:id', deleteProjectController)
+
+router.post(
+  '/:id/dependencies',
+  addProjectDependencyController
+)
+router.delete(
+  '/:id/dependencies/:dependencyId',
+  removeProjectDependencyController
+)
 
 export default router;

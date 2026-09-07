@@ -3,6 +3,10 @@ import {
   ProjectNotFoundError,
   ProjectScheduleConflictError,
 } from '../errors/project.errors.js'
+import {
+  calculateProjectProgress,
+  calculateProjectStatus,
+} from './project-state.service.js'
 
 type CreateProjectInput = {
   name: string
@@ -17,11 +21,19 @@ type UpdateProjectInput = {
 }
 
 export async function getProjects() {
-  return prisma.project.findMany({
+  const projects = await prisma.project.findMany({
     orderBy: {
       createdAt: 'desc',
     },
   })
+
+  return Promise.all(
+    projects.map(async (project) => ({
+      ...project,
+      status: await calculateProjectStatus(project.id),
+      progress: await calculateProjectProgress(project.id),
+    }))
+  )
 }
 
 export async function getProjectById(projectId: string) {
@@ -29,13 +41,35 @@ export async function getProjectById(projectId: string) {
     where: {
       id: projectId,
     },
+    include: {
+      dependencies: {
+        include: {
+          dependsOnProject: true,
+        },
+      },
+
+      dependents: {
+        include: {
+          project: true,
+        },
+      },
+    },
   })
 
   if (!project) {
     throw new ProjectNotFoundError()
   }
 
-  return project
+  const [status, progress] = await Promise.all([
+    calculateProjectStatus(projectId),
+    calculateProjectProgress(projectId),
+  ])
+
+  return {
+    ...project,
+    status,
+    progress,
+  }
 }
 
 export async function createProject(input: CreateProjectInput) {
