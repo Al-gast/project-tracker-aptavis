@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import prisma from './lib/prisma.js';
 import projectRoutes from './routes/project.routes.js';
+import taskRoutes from './routes/task.routes.js'
 
 const app = express();
 
@@ -25,5 +26,6 @@ app.get('/api/health', async (_req, res) => {
 })
 
 app.use('/api/projects', projectRoutes);
+app.use('/api/tasks', taskRoutes)
 
 export default app;
