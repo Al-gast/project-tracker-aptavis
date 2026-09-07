@@ -20,3 +20,10 @@ npm-debug.log*
 # IDE
 .vscode/
 .idea/
+
+# TypeScript / Next generated
+*.tsbuildinfo
+next-env.d.ts
+
+# Deployment
+.vercel/
