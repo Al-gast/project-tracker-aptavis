@@ -1,7 +1,10 @@
 import type {
   CreateProjectInput,
   Project,
+  ProjectDetail,
 } from '@/types/project'
+
+import type { Task, CreateTaskInput } from '@/types/task'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -29,6 +32,48 @@ export async function getProjects(): Promise<Project[]> {
   return result.data
 }
 
+export async function getProjectTasks(
+  projectId: string
+): Promise<Task[]> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/tasks`,
+    {
+      cache: 'no-store',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to fetch tasks'
+    )
+  }
+
+  return result.data
+}
+
+export async function getProject(
+  projectId: string
+): Promise<ProjectDetail> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}`,
+    {
+      cache: 'no-store',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to fetch project'
+    )
+  }
+
+  return result.data
+}
+
 export async function createProject(
   input: CreateProjectInput
 ) {
@@ -47,6 +92,32 @@ export async function createProject(
   if (!response.ok) {
     throw new Error(
       result.message ?? 'Failed to create project'
+    )
+  }
+
+  return result.data
+}
+
+export async function createTask(
+  projectId: string,
+  input: CreateTaskInput
+): Promise<Task> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/tasks`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to create task'
     )
   }
 

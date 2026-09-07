@@ -19,3 +19,19 @@ export type CreateProjectInput = {
   startDate: string
   endDate: string
 }
+
+export type ProjectDependencyItem = {
+  projectId: string
+  dependsOnProjectId: string
+  createdAt: string
+  dependsOnProject: {
+    id: string
+    name: string
+    startDate: string
+    endDate: string
+  }
+}
+
+export type ProjectDetail = Project & {
+  dependencies: ProjectDependencyItem[]
+}

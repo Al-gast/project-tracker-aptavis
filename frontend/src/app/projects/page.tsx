@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import Link from 'next/link'
 
 import {
   createProject,
@@ -136,9 +137,10 @@ export default function ProjectsPage() {
       ) : (
         <div className="grid gap-4">
           {projects.map((project) => (
-            <div
-              key={project.id}
-              className="rounded-xl border p-5"
+            <Link
+            key={project.id}
+            href={`/projects/${project.id}`}
+            className="block rounded-xl border p-5 transition hover:bg-gray-50"
             >
               <div className="flex items-start justify-between gap-6">
                 <div>
@@ -172,7 +174,7 @@ export default function ProjectsPage() {
                   }}
                 />
               </div>
-            </div>
+            </Link>
           ))}
 
           {projects.length === 0 && (
