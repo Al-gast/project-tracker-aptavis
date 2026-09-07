@@ -13,6 +13,7 @@ import {
   getProject,
   getProjectTasks,
   createTask,
+  updateTask,
 } from '@/lib/api'
 
 import type { ProjectDetail } from '@/types/project'
@@ -329,6 +330,8 @@ const parentTaskOptions = useMemo(
               <TaskItem
                 key={task.id}
                 task={task}
+                allTasks={parentTaskOptions}
+                onUpdated={loadProject}
               />
             ))}
           </div>
@@ -341,10 +344,65 @@ const parentTaskOptions = useMemo(
 function TaskItem({
   task,
   level = 0,
+  allTasks,
+  onUpdated,
 }: {
   task: Task
   level?: number
+  allTasks: TaskOption[]
+  onUpdated: () => Promise<void>
 }) {
+  const [editing, setEditing] = useState(false)
+
+  const [name, setName] = useState(task.name)
+  const [weight, setWeight] = useState(task.weight)
+  const [status, setStatus] =
+    useState<TaskStatus>(task.status)
+
+  const [parentTaskId, setParentTaskId] =
+    useState(task.parentTaskId ?? '')
+
+  const [saving, setSaving] = useState(false)
+
+  const [taskError, setTaskError] =
+    useState<string | null>(null)
+
+  async function handleSave() {
+    try {
+      setSaving(true)
+      setTaskError(null)
+
+      await updateTask(task.id, {
+        name,
+        weight,
+        status,
+        parentTaskId:
+          parentTaskId || null,
+      })
+
+      setEditing(false)
+
+      await onUpdated()
+    } catch (error) {
+      setTaskError(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update task'
+      )
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function handleCancel() {
+    setName(task.name)
+    setWeight(task.weight)
+    setStatus(task.status)
+    setParentTaskId(task.parentTaskId ?? '')
+    setTaskError(null)
+    setEditing(false)
+  }
+
   return (
     <div>
       <div
@@ -353,21 +411,154 @@ function TaskItem({
           marginLeft: `${level * 24}px`,
         }}
       >
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="font-medium">
-              {task.name}
+        {editing ? (
+          <div className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Name
+                </label>
+
+                <input
+                  value={name}
+                  onChange={(event) =>
+                    setName(event.target.value)
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Weight
+                </label>
+
+                <input
+                  type="number"
+                  min={1}
+                  value={weight}
+                  onChange={(event) =>
+                    setWeight(
+                      Number(event.target.value)
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Status
+                </label>
+
+                <select
+                  value={status}
+                  onChange={(event) =>
+                    setStatus(
+                      event.target.value as TaskStatus
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                >
+                  <option value="DRAFT">
+                    Draft
+                  </option>
+
+                  <option value="IN_PROGRESS">
+                    In Progress
+                  </option>
+
+                  <option value="DONE">
+                    Done
+                  </option>
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Parent Task
+                </label>
+
+                <select
+                  value={parentTaskId}
+                  onChange={(event) =>
+                    setParentTaskId(
+                      event.target.value
+                    )
+                  }
+                  className="w-full rounded-md border px-3 py-2"
+                >
+                  <option value="">
+                    No parent
+                  </option>
+
+                  {allTasks
+                    .filter(
+                      (option) =>
+                        option.id !== task.id
+                    )
+                    .map((option) => (
+                      <option
+                        key={option.id}
+                        value={option.id}
+                      >
+                        {option.label}
+                      </option>
+                    ))}
+                </select>
+              </div>
             </div>
 
-            <div className="mt-1 text-sm text-gray-500">
-              Weight: {task.weight}
+            {taskError && (
+              <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {taskError}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : 'Save'}
+              </button>
+
+              <button
+                onClick={handleCancel}
+                disabled={saving}
+                className="rounded-md border px-4 py-2 text-sm"
+              >
+                Cancel
+              </button>
             </div>
           </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <div className="font-medium">
+                {task.name}
+              </div>
 
-          <span className="text-sm font-medium">
-            {task.status}
-          </span>
-        </div>
+              <div className="mt-1 text-sm text-gray-500">
+                Weight: {task.weight}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">
+                {task.status}
+              </span>
+
+              <button
+                onClick={() => setEditing(true)}
+                className="rounded-md border px-3 py-1.5 text-sm"
+              >
+                Edit
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {task.subtasks.map((subtask) => (
@@ -375,6 +566,8 @@ function TaskItem({
           key={subtask.id}
           task={subtask}
           level={level + 1}
+          allTasks={allTasks}
+          onUpdated={onUpdated}
         />
       ))}
     </div>

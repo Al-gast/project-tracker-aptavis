@@ -21,3 +21,10 @@ export type CreateTaskInput = {
   status?: TaskStatus
   parentTaskId?: string | null
 }
+
+export type UpdateTaskInput = {
+  name?: string
+  weight?: number
+  status?: TaskStatus
+  parentTaskId?: string | null
+}

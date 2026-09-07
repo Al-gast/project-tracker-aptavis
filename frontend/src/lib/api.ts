@@ -4,7 +4,7 @@ import type {
   ProjectDetail,
 } from '@/types/project'
 
-import type { Task, CreateTaskInput } from '@/types/task'
+import type { Task, CreateTaskInput, UpdateTaskInput } from '@/types/task'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -118,6 +118,48 @@ export async function createTask(
   if (!response.ok) {
     throw new Error(
       result.message ?? 'Failed to create task'
+    )
+  }
+
+  return result.data
+}
+
+export async function updateTask(
+  taskId: string,
+  input: UpdateTaskInput
+): Promise<Task> {
+  const response = await fetch(
+    `${API_URL}/tasks/${taskId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    if (result.dependencies) {
+      const dependencies = result.dependencies
+        .map(
+          (dependency: {
+            name: string
+            status: string
+          }) =>
+            `${dependency.name} (${dependency.status})`
+        )
+        .join(', ')
+
+      throw new Error(
+        `${result.message}: ${dependencies}`
+      )
+    }
+
+    throw new Error(
+      result.message ?? 'Failed to update task'
     )
   }
 
