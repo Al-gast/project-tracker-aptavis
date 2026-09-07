@@ -1,7 +1,11 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
+import {
+  FormEvent,
+  useEffect,
+  useState,
+} from 'react'
 
 import {
   createProject,
@@ -11,21 +15,46 @@ import {
 import type { Project } from '@/types/project'
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([])
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  // =========================================================
+  // PROJECT STATE
+  // =========================================================
 
-  const [name, setName] = useState('')
-  const [startDate, setStartDate] = useState('')
-  const [endDate, setEndDate] = useState('')
+  const [projects, setProjects] =
+    useState<Project[]>([])
+
+  const [loading, setLoading] =
+    useState(true)
+
+  const [submitting, setSubmitting] =
+    useState(false)
+
+  const [error, setError] =
+    useState<string | null>(null)
+
+  // =========================================================
+  // CREATE PROJECT FORM
+  // =========================================================
+
+  const [name, setName] =
+    useState('')
+
+  const [startDate, setStartDate] =
+    useState('')
+
+  const [endDate, setEndDate] =
+    useState('')
+
+  // =========================================================
+  // LOAD PROJECTS
+  // =========================================================
 
   async function loadProjects() {
     try {
       setLoading(true)
       setError(null)
 
-      const data = await getProjects()
+      const data =
+        await getProjects()
 
       setProjects(data)
     } catch (error) {
@@ -40,13 +69,26 @@ export default function ProjectsPage() {
   }
 
   useEffect(() => {
-    loadProjects()
+    void loadProjects()
   }, [])
+
+  // =========================================================
+  // CREATE PROJECT
+  // =========================================================
 
   async function handleSubmit(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault()
+
+    const confirmed = window.confirm(
+      `Create project "${name}"?\n\n` +
+        `Schedule: ${startDate} - ${endDate}`
+    )
+
+    if (!confirmed) {
+      return
+    }
 
     try {
       setSubmitting(true)
@@ -74,57 +116,97 @@ export default function ProjectsPage() {
     }
   }
 
+  // =========================================================
+  // PAGE
+  // =========================================================
+
   return (
     <main className="mx-auto max-w-6xl p-8">
+      {/* HEADER */}
+
       <div className="mb-8">
         <h1 className="text-3xl font-semibold">
           Project Tracker
         </h1>
 
         <p className="mt-2 text-gray-600">
-          Manage projects, tasks, schedules, and dependencies.
+          Manage projects, tasks, schedules,
+          and dependencies.
         </p>
       </div>
+
+      {/* CREATE PROJECT */}
 
       <form
         onSubmit={handleSubmit}
         className="mb-10 grid gap-4 rounded-xl border p-6 md:grid-cols-4"
       >
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Project name"
-          required
-          className="rounded-md border px-3 py-2"
-        />
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Project Name
+          </label>
 
-        <input
-          type="date"
-          value={startDate}
-          onChange={(event) =>
-            setStartDate(event.target.value)
-          }
-          required
-          className="rounded-md border px-3 py-2"
-        />
+          <input
+            value={name}
+            onChange={(event) =>
+              setName(event.target.value)
+            }
+            placeholder="Project name"
+            required
+            className="w-full rounded-md border px-3 py-2"
+          />
+        </div>
 
-        <input
-          type="date"
-          value={endDate}
-          onChange={(event) =>
-            setEndDate(event.target.value)
-          }
-          required
-          className="rounded-md border px-3 py-2"
-        />
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            Start Date
+          </label>
 
-        <button
-          disabled={submitting}
-          className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
-        >
-          {submitting ? 'Creating...' : 'Create Project'}
-        </button>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(event) =>
+              setStartDate(
+                event.target.value
+              )
+            }
+            required
+            className="w-full rounded-md border px-3 py-2"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium">
+            End Date
+          </label>
+
+          <input
+            type="date"
+            value={endDate}
+            onChange={(event) =>
+              setEndDate(
+                event.target.value
+              )
+            }
+            required
+            className="w-full rounded-md border px-3 py-2"
+          />
+        </div>
+
+        <div className="flex items-end">
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+          >
+            {submitting
+              ? 'Creating...'
+              : 'Create Project'}
+          </button>
+        </div>
       </form>
+
+      {/* ERROR */}
 
       {error && (
         <div className="mb-6 rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
@@ -132,55 +214,68 @@ export default function ProjectsPage() {
         </div>
       )}
 
+      {/* PROJECT LIST */}
+
       {loading ? (
-        <p>Loading projects...</p>
+        <p className="text-gray-500">
+          Loading projects...
+        </p>
       ) : (
         <div className="grid gap-4">
-          {projects.map((project) => (
-            <Link
-            key={project.id}
-            href={`/projects/${project.id}`}
-            className="block rounded-xl border p-5 transition hover:bg-gray-50"
-            >
-              <div className="flex items-start justify-between gap-6">
-                <div>
-                  <h2 className="text-lg font-semibold">
-                    {project.name}
-                  </h2>
+          {projects.map(
+            (project) => (
+              <Link
+                key={project.id}
+                href={`/projects/${project.id}`}
+                className="block rounded-xl border p-5 transition hover:bg-gray-50"
+              >
+                <div className="flex items-start justify-between gap-6">
+                  <div>
+                    <h2 className="text-lg font-semibold">
+                      {project.name}
+                    </h2>
 
-                  <p className="mt-1 text-sm text-gray-600">
-                    {project.startDate.slice(0, 10)}
-                    {' - '}
-                    {project.endDate.slice(0, 10)}
-                  </p>
-                </div>
-
-                <div className="text-right">
-                  <div className="text-sm font-medium">
-                    {project.status}
+                    <p className="mt-1 text-sm text-gray-600">
+                      {project.startDate.slice(
+                        0,
+                        10
+                      )}
+                      {' - '}
+                      {project.endDate.slice(
+                        0,
+                        10
+                      )}
+                    </p>
                   </div>
 
-                  <div className="text-sm text-gray-600">
-                    {project.progress}%
+                  <div className="text-right">
+                    <div className="text-sm font-medium">
+                      {project.status}
+                    </div>
+
+                    <div className="text-sm text-gray-600">
+                      {project.progress}%
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="mt-4 h-2 overflow-hidden rounded bg-gray-200">
-                <div
-                  className="h-full bg-black"
-                  style={{
-                    width: `${project.progress}%`,
-                  }}
-                />
-              </div>
-            </Link>
-          ))}
+                <div className="mt-4 h-2 overflow-hidden rounded bg-gray-200">
+                  <div
+                    className="h-full bg-black"
+                    style={{
+                      width:
+                        `${project.progress}%`,
+                    }}
+                  />
+                </div>
+              </Link>
+            )
+          )}
 
           {projects.length === 0 && (
-            <p className="text-gray-500">
+            <div className="rounded-xl border p-8 text-center text-gray-500">
               No projects yet.
-            </p>
+            </div>
           )}
         </div>
       )}

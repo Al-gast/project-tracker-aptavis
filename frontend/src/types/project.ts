@@ -35,3 +35,9 @@ export type ProjectDependencyItem = {
 export type ProjectDetail = Project & {
   dependencies: ProjectDependencyItem[]
 }
+
+export type UpdateProjectInput = {
+  name?: string
+  startDate?: string
+  endDate?: string
+}

@@ -2,6 +2,7 @@ import type {
   CreateProjectInput,
   Project,
   ProjectDetail,
+  UpdateProjectInput
 } from '@/types/project'
 
 import type { Task, CreateTaskInput, UpdateTaskInput, TaskDetail, TaskFilter } from '@/types/task'
@@ -165,6 +166,59 @@ export async function removeProjectDependency(
   return result.data
 }
 
+export async function updateProject(
+  projectId: string,
+  input: UpdateProjectInput
+): Promise<Project> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(input),
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    if (result.conflict) {
+      throw new Error(
+        `${result.message}: ${result.conflict.name} ` +
+        `(${result.conflict.startDate.slice(0, 10)} - ` +
+        `${result.conflict.endDate.slice(0, 10)})`
+      )
+    }
+
+    throw new Error(
+      result.message ?? 'Failed to update project'
+    )
+  }
+
+  return result.data
+}
+
+export async function deleteProject(
+  projectId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to delete project'
+    )
+  }
+}
+
 // Task APIs
 export async function getTask(
   taskId: string
@@ -305,4 +359,23 @@ export async function removeTaskDependency(
   }
 
   return result.data
+}
+
+export async function deleteTask(
+  taskId: string
+): Promise<void> {
+  const response = await fetch(
+    `${API_URL}/tasks/${taskId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ?? 'Failed to delete task'
+    )
+  }
 }
