@@ -27,7 +27,7 @@ router.get('/:projectId/tasks', getProjectTasksController)
 router.post('/:projectId/tasks', createTaskController)
 
 router.post('/', createProjectController)
-router.put('/:id', updateProjectController)
+router.patch('/:id', updateProjectController)
 router.delete('/:id', deleteProjectController)
 
 router.post(
