@@ -4,7 +4,7 @@ import type {
   ProjectDetail,
 } from '@/types/project'
 
-import type { Task, CreateTaskInput, UpdateTaskInput, TaskDetail } from '@/types/task'
+import type { Task, CreateTaskInput, UpdateTaskInput, TaskDetail, TaskFilter } from '@/types/task'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL
 
@@ -34,14 +34,28 @@ export async function getProjects(): Promise<Project[]> {
 }
 
 export async function getProjectTasks(
-  projectId: string
+  projectId: string,
+  filter: TaskFilter = {}
 ): Promise<Task[]> {
-  const response = await fetch(
-    `${API_URL}/projects/${projectId}/tasks`,
-    {
-      cache: 'no-store',
-    }
-  )
+  const params = new URLSearchParams()
+
+  if (filter.search?.trim()) {
+    params.set('search', filter.search.trim())
+  }
+
+  if (filter.status) {
+    params.set('status', filter.status)
+  }
+
+  const query = params.toString()
+
+  const url = query
+    ? `${API_URL}/projects/${projectId}/tasks?${query}`
+    : `${API_URL}/projects/${projectId}/tasks`
+
+  const response = await fetch(url, {
+    cache: 'no-store',
+  })
 
   const result = await response.json()
 

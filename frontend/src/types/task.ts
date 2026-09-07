@@ -38,3 +38,8 @@ export type TaskDependency = {
 export type TaskDetail = Task & {
   dependencies: TaskDependency[]
 }
+
+export type TaskFilter = {
+  search?: string
+  status?: TaskStatus
+}

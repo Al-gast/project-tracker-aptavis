@@ -27,6 +27,7 @@ import type {
   Task,
   TaskDetail,
   TaskStatus,
+  TaskFilter,
 } from '@/types/task'
 
 export default function ProjectDetailPage() {
@@ -39,6 +40,9 @@ export default function ProjectDetailPage() {
 
   const [tasks, setTasks] =
     useState<Task[]>([])
+
+  const [allTaskTree, setAllTaskTree] =
+  useState<Task[]>([])
 
   const [loading, setLoading] = useState(true)
 
@@ -64,8 +68,8 @@ export default function ProjectDetailPage() {
     useState(false)
 
     const parentTaskOptions = useMemo(
-    () => flattenTasks(tasks),
-    [tasks]
+        () => flattenTasks(allTaskTree),
+        [allTaskTree]
     )
 
     const [allProjects, setAllProjects] =
@@ -85,6 +89,18 @@ export default function ProjectDetailPage() {
     projectDependencyError,
     setProjectDependencyError,
     ] = useState<string | null>(null)
+
+    const [taskSearch, setTaskSearch] =
+  useState('')
+
+const [taskStatusFilter, setTaskStatusFilter] =
+  useState<TaskStatus | ''>('')
+
+const [appliedTaskFilter, setAppliedTaskFilter] =
+  useState<TaskFilter>({})
+
+const [taskFilterLoading, setTaskFilterLoading] =
+  useState(false)
 
   useEffect(() => {
     loadProject()
@@ -123,15 +139,24 @@ export default function ProjectDetailPage() {
       const [
         projectData,
         taskData,
+        fullTaskData,
         projectsData,
-      ] = await Promise.all([
+        ] = await Promise.all([
         getProject(projectId),
+
+        getProjectTasks(
+            projectId,
+            appliedTaskFilter
+        ),
+
         getProjectTasks(projectId),
+
         getProjects(),
-      ])
+        ])
 
         setProject(projectData)
         setTasks(taskData)
+        setAllTaskTree(fullTaskData)
         setAllProjects(projectsData)
     } catch (error) {
       setError(
@@ -229,6 +254,66 @@ export default function ProjectDetailPage() {
   } finally {
     setProjectDependencyLoading(false)
   }
+    }
+
+    async function handleApplyTaskFilter() {
+        const filter: TaskFilter = {
+            search: taskSearch.trim() || undefined,
+            status:
+            taskStatusFilter || undefined,
+        }
+
+        try {
+            setTaskFilterLoading(true)
+            setError(null)
+
+            const filteredTasks =
+            await getProjectTasks(
+                projectId,
+                filter
+            )
+
+            setAppliedTaskFilter(filter)
+            setTasks(filteredTasks)
+        } catch (error) {
+            setError(
+            error instanceof Error
+                ? error.message
+                : 'Failed to filter tasks'
+            )
+        } finally {
+            setTaskFilterLoading(false)
+        }
+    }
+
+    async function handleClearTaskFilter() {
+        try {
+            setTaskFilterLoading(true)
+            setError(null)
+
+            setTaskSearch('')
+            setTaskStatusFilter('')
+
+            const emptyFilter: TaskFilter = {}
+
+            const allTasks =
+            await getProjectTasks(
+                projectId,
+                emptyFilter
+            )
+
+            setAppliedTaskFilter(emptyFilter)
+            setTasks(allTasks)
+            setAllTaskTree(allTasks)
+        } catch (error) {
+            setError(
+            error instanceof Error
+                ? error.message
+                : 'Failed to clear task filter'
+            )
+        } finally {
+            setTaskFilterLoading(false)
+        }
     }
 
   return (
@@ -428,6 +513,71 @@ export default function ProjectDetailPage() {
           </button>
         </div>
 
+        <div className="mb-6 grid gap-3 rounded-xl border p-4 md:grid-cols-[1fr_220px_auto]">
+            <input
+                type="search"
+                value={taskSearch}
+                onChange={(event) =>
+                setTaskSearch(event.target.value)
+                }
+                onKeyDown={(event) => {
+                if (event.key === 'Enter') {
+                    void handleApplyTaskFilter()
+                }
+                }}
+                placeholder="Search tasks..."
+                className="rounded-md border px-3 py-2"
+            />
+
+            <select
+                value={taskStatusFilter}
+                onChange={(event) =>
+                setTaskStatusFilter(
+                    event.target.value as TaskStatus | ''
+                )
+                }
+                className="rounded-md border px-3 py-2"
+            >
+                <option value="">
+                All statuses
+                </option>
+
+                <option value="DRAFT">
+                Draft
+                </option>
+
+                <option value="IN_PROGRESS">
+                In Progress
+                </option>
+
+                <option value="DONE">
+                Done
+                </option>
+            </select>
+
+            <div className="flex gap-2">
+                <button
+                type="button"
+                onClick={handleApplyTaskFilter}
+                disabled={taskFilterLoading}
+                className="rounded-md bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+                >
+                {taskFilterLoading
+                    ? 'Loading...'
+                    : 'Apply'}
+                </button>
+
+                <button
+                type="button"
+                onClick={handleClearTaskFilter}
+                disabled={taskFilterLoading}
+                className="rounded-md border px-4 py-2 text-sm disabled:opacity-50"
+                >
+                Clear
+                </button>
+            </div>
+        </div>
+
         {showTaskForm && (
             <form
                 onSubmit={handleCreateTask}
@@ -537,9 +687,12 @@ export default function ProjectDetailPage() {
             )}
 
         {tasks.length === 0 ? (
-          <div className="rounded-xl border p-8 text-center text-gray-500">
-            No tasks yet.
-          </div>
+        <div className="rounded-xl border p-8 text-center text-gray-500">
+            {appliedTaskFilter.search ||
+            appliedTaskFilter.status
+            ? 'No tasks match the current filter.'
+            : 'No tasks yet.'}
+        </div>
         ) : (
           <div className="space-y-2">
             {tasks.map((task) => (
