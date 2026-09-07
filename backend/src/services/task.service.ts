@@ -40,6 +40,53 @@ type TaskTreeNode = TaskRow & {
   subtasks: TaskTreeNode[]
 }
 
+type TaskFilter = {
+  search?: string
+  status?: TaskStatus
+}
+
+function filterTaskTree(
+  tasks: TaskTreeNode[],
+  filter: TaskFilter
+): TaskTreeNode[] {
+  const search = filter.search?.toLowerCase()
+
+  return tasks
+    .map((task) => {
+      const filteredSubtasks = filterTaskTree(
+        task.subtasks,
+        filter
+      )
+
+      const matchesSearch =
+        !search ||
+        task.name.toLowerCase().includes(search)
+
+      const matchesStatus =
+        !filter.status ||
+        task.status === filter.status
+
+      const matchesSelf =
+        matchesSearch && matchesStatus
+
+      const hasMatchingDescendant =
+        filteredSubtasks.length > 0
+
+      if (!matchesSelf && !hasMatchingDescendant) {
+        return null
+      }
+
+      return {
+        ...task,
+        subtasks: filteredSubtasks,
+      }
+    })
+    .filter(
+      (task): task is TaskTreeNode =>
+        task !== null
+    )
+}
+
 function buildTaskTree(tasks: TaskRow[]): TaskTreeNode[] {
   const taskMap = new Map<string, TaskTreeNode>()
 
@@ -97,7 +144,10 @@ async function ensureNoHierarchyCycle(
   }
 }
 
-export async function getProjectTasks(projectId: string) {
+export async function getProjectTasks(
+  projectId: string,
+  filter: TaskFilter = {}
+) {
   const project = await prisma.project.findUnique({
     where: {
       id: projectId,
@@ -117,7 +167,13 @@ export async function getProjectTasks(projectId: string) {
     },
   })
 
-  return buildTaskTree(tasks)
+  const tree = buildTaskTree(tasks)
+
+  if (!filter.search && !filter.status) {
+    return tree
+  }
+
+  return filterTaskTree(tree, filter)
 }
 
 export async function getTaskById(taskId: string) {

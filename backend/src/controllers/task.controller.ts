@@ -9,6 +9,8 @@ import {
   updateTask,
 } from '../services/task.service.js'
 
+import { taskFilterSchema } from '../validators/task-filter.validator.js'
+
 import {
   createTaskSchema,
   updateTaskSchema,
@@ -37,8 +39,11 @@ export async function getProjectTasksController(
   res: Response
 ) {
   try {
+    const filter = taskFilterSchema.parse(req.query)
+
     const tasks = await getProjectTasks(
-      req.params.projectId
+      req.params.projectId,
+      filter
     )
 
     return res.status(200).json({
@@ -46,6 +51,14 @@ export async function getProjectTasksController(
       data: tasks,
     })
   } catch (error) {
+    if (error instanceof ZodError) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validation failed',
+        errors: error.issues,
+      })
+    }
+
     if (error instanceof ProjectNotFoundError) {
       return res.status(404).json({
         success: false,
