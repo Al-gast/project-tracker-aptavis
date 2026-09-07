@@ -21,6 +21,7 @@ import {
   ParentTaskNotFoundError,
   TaskHierarchyCycleError,
   TaskNotFoundError,
+  IncompleteTaskDependencyError
 } from '../errors/task.errors.js'
 
 type ProjectParams = {
@@ -161,6 +162,14 @@ export async function updateTaskController(
       data: task,
     })
   } catch (error) {
+    if (error instanceof IncompleteTaskDependencyError) {
+    return res.status(409).json({
+        success: false,
+        message: error.message,
+        dependencies: error.dependencies,
+    })
+    }
+
     if (error instanceof ZodError) {
       return res.status(422).json({
         success: false,

@@ -6,6 +6,8 @@ import {
   TaskHierarchyCycleError,
   TaskNotFoundError,
 } from '../errors/task.errors.js'
+import { IncompleteTaskDependencyError } from '../errors/task.errors.js'
+import { revalidateDependentTasks } from './task-dependency.service.js'
 
 type TaskStatus = 'DRAFT' | 'IN_PROGRESS' | 'DONE'
 
@@ -229,17 +231,56 @@ export async function updateTask(
     }
   }
 
-  return prisma.task.update({
-    where: {
-      id: taskId,
-    },
-    data: {
-      name: input.name,
-      status: input.status,
-      weight: input.weight,
-      parentTaskId: input.parentTaskId,
-    },
-  })
+  if (
+  input.status === 'DONE' &&
+  existingTask.status !== 'DONE'
+) {
+  const incompleteDependencies =
+    await prisma.taskDependency.findMany({
+      where: {
+        taskId,
+        dependsOnTask: {
+          status: {
+            not: 'DONE',
+          },
+        },
+      },
+      include: {
+        dependsOnTask: true,
+      },
+    })
+
+  if (incompleteDependencies.length > 0) {
+    throw new IncompleteTaskDependencyError(
+      incompleteDependencies.map((dependency) => ({
+        id: dependency.dependsOnTask.id,
+        name: dependency.dependsOnTask.name,
+        status: dependency.dependsOnTask.status,
+      }))
+    )
+  }
+}
+
+  const updatedTask = await prisma.task.update({
+  where: {
+    id: taskId,
+  },
+  data: {
+    name: input.name,
+    status: input.status,
+    weight: input.weight,
+    parentTaskId: input.parentTaskId,
+  },
+})
+
+if (
+  existingTask.status === 'DONE' &&
+  updatedTask.status !== 'DONE'
+) {
+  await revalidateDependentTasks(taskId)
+}
+
+return updatedTask
 }
 
 export async function deleteTask(taskId: string) {
