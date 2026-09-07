@@ -10,16 +10,19 @@ import {
 } from 'react'
 
 import {
+  addProjectDependency,
   addTaskDependency,
   createTask,
   getProject,
+  getProjects,
   getProjectTasks,
   getTask,
+  removeProjectDependency,
   removeTaskDependency,
   updateTask,
 } from '@/lib/api'
 
-import type { ProjectDetail } from '@/types/project'
+import type { ProjectDetail, Project } from '@/types/project'
 import type {
   Task,
   TaskDetail,
@@ -60,10 +63,28 @@ export default function ProjectDetailPage() {
   const [taskSubmitting, setTaskSubmitting] =
     useState(false)
 
-const parentTaskOptions = useMemo(
-  () => flattenTasks(tasks),
-  [tasks]
-)
+    const parentTaskOptions = useMemo(
+    () => flattenTasks(tasks),
+    [tasks]
+    )
+
+    const [allProjects, setAllProjects] =
+    useState<Project[]>([])
+
+    const [
+    selectedProjectDependencyId,
+    setSelectedProjectDependencyId,
+    ] = useState('')
+
+    const [
+    projectDependencyLoading,
+    setProjectDependencyLoading,
+    ] = useState(false)
+
+    const [
+    projectDependencyError,
+    setProjectDependencyError,
+    ] = useState<string | null>(null)
 
   useEffect(() => {
     loadProject()
@@ -99,14 +120,19 @@ const parentTaskOptions = useMemo(
       setLoading(true)
       setError(null)
 
-      const [projectData, taskData] =
-        await Promise.all([
-          getProject(projectId),
-          getProjectTasks(projectId),
-        ])
+      const [
+        projectData,
+        taskData,
+        projectsData,
+      ] = await Promise.all([
+        getProject(projectId),
+        getProjectTasks(projectId),
+        getProjects(),
+      ])
 
-      setProject(projectData)
-      setTasks(taskData)
+        setProject(projectData)
+        setTasks(taskData)
+        setAllProjects(projectsData)
     } catch (error) {
       setError(
         error instanceof Error
@@ -153,6 +179,58 @@ const parentTaskOptions = useMemo(
   }
     }
 
+    async function handleAddProjectDependency() {
+    if (!selectedProjectDependencyId) {
+        return
+    }
+
+    try {
+        setProjectDependencyLoading(true)
+        setProjectDependencyError(null)
+
+        await addProjectDependency(
+        projectId,
+        selectedProjectDependencyId
+        )
+
+        setSelectedProjectDependencyId('')
+
+        await loadProject()
+    } catch (error) {
+        setProjectDependencyError(
+        error instanceof Error
+            ? error.message
+            : 'Failed to add project dependency'
+        )
+    } finally {
+        setProjectDependencyLoading(false)
+    }
+    }
+
+    async function handleRemoveProjectDependency(
+  dependsOnProjectId: string
+) {
+  try {
+    setProjectDependencyLoading(true)
+    setProjectDependencyError(null)
+
+    await removeProjectDependency(
+      projectId,
+      dependsOnProjectId
+    )
+
+    await loadProject()
+  } catch (error) {
+    setProjectDependencyError(
+      error instanceof Error
+        ? error.message
+        : 'Failed to remove project dependency'
+    )
+  } finally {
+    setProjectDependencyLoading(false)
+  }
+    }
+
   return (
     <main className="mx-auto max-w-6xl p-8">
       <Link
@@ -194,6 +272,137 @@ const parentTaskOptions = useMemo(
               width: `${project.progress}%`,
             }}
           />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <div className="mb-4">
+            <h2 className="text-xl font-semibold">
+            Project Dependencies
+            </h2>
+
+            <p className="mt-1 text-sm text-gray-600">
+            This project can only progress when all
+            dependency projects are Done.
+            </p>
+        </div>
+
+        <div className="rounded-xl border p-5">
+            {project.dependencies.length > 0 ? (
+            <div className="mb-5 space-y-2">
+                {project.dependencies.map(
+                (dependency) => {
+                    const dependencyProject =
+                    allProjects.find(
+                        (item) =>
+                        item.id ===
+                        dependency.dependsOnProjectId
+                    )
+
+                    return (
+                    <div
+                        key={
+                        dependency.dependsOnProjectId
+                        }
+                        className="flex items-center justify-between rounded-lg bg-gray-50 px-4 py-3"
+                    >
+                        <div>
+                        <div className="font-medium">
+                            {dependencyProject?.name ??
+                            dependency.dependsOnProject
+                                .name}
+                        </div>
+
+                        <div className="mt-1 text-sm text-gray-500">
+                            Status:{' '}
+                            {dependencyProject?.status ??
+                            'Unknown'}
+                        </div>
+                        </div>
+
+                        <button
+                        type="button"
+                        onClick={() =>
+                            handleRemoveProjectDependency(
+                            dependency.dependsOnProjectId
+                            )
+                        }
+                        disabled={
+                            projectDependencyLoading
+                        }
+                        className="text-sm text-red-600 disabled:opacity-50"
+                        >
+                        Remove
+                        </button>
+                    </div>
+                    )
+                }
+                )}
+            </div>
+            ) : (
+            <div className="mb-5 text-sm text-gray-500">
+                No project dependencies.
+            </div>
+            )}
+
+            <div className="flex gap-2">
+            <select
+                value={selectedProjectDependencyId}
+                onChange={(event) =>
+                setSelectedProjectDependencyId(
+                    event.target.value
+                )
+                }
+                className="flex-1 rounded-md border px-3 py-2"
+            >
+                <option value="">
+                Select project dependency
+                </option>
+
+                {allProjects
+                .filter(
+                    (candidate) =>
+                    candidate.id !== project.id &&
+                    !project.dependencies.some(
+                        (dependency) =>
+                        dependency.dependsOnProjectId ===
+                        candidate.id
+                    )
+                )
+                .map((candidate) => (
+                    <option
+                    key={candidate.id}
+                    value={candidate.id}
+                    >
+                    {candidate.name}
+                    {' - '}
+                    {candidate.status}
+                    </option>
+                ))}
+            </select>
+
+            <button
+                type="button"
+                onClick={
+                handleAddProjectDependency
+                }
+                disabled={
+                !selectedProjectDependencyId ||
+                projectDependencyLoading
+                }
+                className="rounded-md bg-black px-4 py-2 text-white disabled:opacity-50"
+            >
+                {projectDependencyLoading
+                ? 'Processing...'
+                : 'Add'}
+            </button>
+            </div>
+
+            {projectDependencyError && (
+            <div className="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                {projectDependencyError}
+            </div>
+            )}
         </div>
       </section>
 

@@ -99,6 +99,58 @@ export async function createProject(
   return result.data
 }
 
+export async function addProjectDependency(
+  projectId: string,
+  dependsOnProjectId: string
+) {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/dependencies`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        dependsOnProjectId,
+      }),
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        'Failed to add project dependency'
+    )
+  }
+
+  return result.data
+}
+
+export async function removeProjectDependency(
+  projectId: string,
+  dependsOnProjectId: string
+) {
+  const response = await fetch(
+    `${API_URL}/projects/${projectId}/dependencies/${dependsOnProjectId}`,
+    {
+      method: 'DELETE',
+    }
+  )
+
+  const result = await response.json()
+
+  if (!response.ok) {
+    throw new Error(
+      result.message ??
+        'Failed to remove project dependency'
+    )
+  }
+
+  return result.data
+}
+
 // Task APIs
 export async function getTask(
   taskId: string
